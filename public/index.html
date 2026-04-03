@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CryptoChat • Futuristic 1:1 Messaging</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="aurora"></div>
+  <main id="app">
+    <section id="loginPanel" class="glass card">
+      <h1>CryptoChat</h1>
+      <p class="subtitle">A premium, futuristic direct chat experience.</p>
+      <form id="loginForm">
+        <label>Username
+          <input id="username" required autocomplete="username" placeholder="e.g., nova" />
+        </label>
+        <label>Password
+          <div class="password-wrap">
+            <input id="password" type="password" required autocomplete="current-password" placeholder="••••••••••" />
+            <button type="button" id="togglePassword" class="secondary">Show</button>
+          </div>
+        </label>
+        <button type="submit">Enter the Grid</button>
+      </form>
+      <p id="loginError" class="error"></p>
+      <p class="hint">Demo accounts are pre-seeded in memory (no database).</p>
+    </section>
+
+    <section id="chatPanel" class="hidden">
+      <header class="topbar glass">
+        <div>
+          <h2 id="meLabel"></h2>
+          <small>Direct channels only • invitation required</small>
+        </div>
+        <button id="refreshBtn" class="secondary">Refresh</button>
+      </header>
+
+      <div class="layout">
+        <aside class="glass sidebar">
+          <h3>Find people</h3>
+          <input id="userSearch" placeholder="Search usernames" />
+          <ul id="searchResults"></ul>
+
+          <h3>Invitations</h3>
+          <ul id="invitesList"></ul>
+
+          <h3>Channels</h3>
+          <ul id="chatList"></ul>
+        </aside>
+
+        <section class="glass conversation">
+          <div id="emptyState" class="empty-state">
+            <h3>No channel selected</h3>
+            <p>Search, invite, and start your first secure conversation.</p>
+          </div>
+          <div id="chatView" class="hidden">
+            <header>
+              <h3 id="chatTitle"></h3>
+            </header>
+            <div id="messages" class="messages"></div>
+            <form id="messageForm">
+              <input id="messageInput" placeholder="Transmit message" maxlength="600" required />
+              <button type="submit">Send</button>
+            </form>
+          </div>
+        </section>
+      </div>
+    </section>
+  </main>
+  <script src="app.js"></script>
+</body>
+</html>
