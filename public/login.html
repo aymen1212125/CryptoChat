@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CryptoChat • Login</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <main class="auth-shell">
+    <section class="glass auth-card">
+      <h1>CryptoChat</h1>
+      <p class="muted">Secure direct messaging. No groups. Invite-only channels.</p>
+
+      <form id="loginForm" class="stack">
+        <input id="username" required placeholder="Username" autocomplete="username" />
+        <input id="password" required type="password" placeholder="Password" autocomplete="current-password" />
+        <button type="submit">Login</button>
+      </form>
+
+      <p id="error" class="error"></p>
+    </section>
+  </main>
+  <script src="login.js"></script>
+</body>
+</html>
