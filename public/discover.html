@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CryptoChat • Discover</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <main class="shell">
+    <header class="glass topbar">
+      <div>
+        <h2 id="meLabel"></h2>
+        <small>Find users manually (no suggestions)</small>
+      </div>
+      <div class="row">
+        <button id="refreshBtn" class="secondary">Refresh</button>
+        <button id="logoutBtn" class="secondary">Logout</button>
+      </div>
+    </header>
+
+    <section class="grid-2">
+      <article class="glass panel">
+        <h3>Search users</h3>
+        <input id="searchInput" placeholder="Type at least 2 letters" />
+        <ul id="searchList"></ul>
+      </article>
+
+      <article class="glass panel">
+        <h3>Invitations</h3>
+        <ul id="invitesList"></ul>
+      </article>
+    </section>
+
+    <section class="glass panel">
+      <h3>Your chats</h3>
+      <ul id="chatList"></ul>
+    </section>
+  </main>
+
+  <script src="discover.js"></script>
+</body>
+</html>

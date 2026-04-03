@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CryptoChat • Chat</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <main class="shell chat-shell">
+    <header class="glass topbar">
+      <div>
+        <h2 id="chatTitle"></h2>
+        <small id="subTitle"></small>
+      </div>
+      <div class="row">
+        <button id="backBtn" class="secondary">Back</button>
+        <button id="logoutBtn" class="secondary">Logout</button>
+      </div>
+    </header>
+
+    <section class="glass panel chat-panel">
+      <div id="messages" class="messages"></div>
+      <form id="messageForm" class="row">
+        <input id="messageInput" placeholder="Type message" maxlength="600" required />
+        <button type="submit">Send</button>
+      </form>
+    </section>
+  </main>
+
+  <script src="chat.js"></script>
+</body>
+</html>
