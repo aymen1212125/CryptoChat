@@ -1,21 +1,23 @@
 # CryptoChat
 
-CryptoChat is a full-stack (no database) direct messaging app with a polished futuristic UI, invitation-based 1:1 channels, and Python-backed password hashing.
+CryptoChat is an in-memory, invite-only direct messaging app with a professional Telegram-like layout (custom design language) and multi-page UX:
+- `/login.html`
+- `/discover.html`
+- `/chat.html`
 
 ## Stack
-- **Frontend:** HTML, CSS, vanilla JavaScript
-- **Backend:** Node.js + Express
-- **Security logic:** Python (`pbkdf2_sha256` hashing and verification)
-- **Storage:** In-memory runtime + local seed JSON for demo accounts
+- Frontend: HTML + CSS + JavaScript
+- Backend: Node.js + Express
+- Password security: Python PBKDF2 verification
 
-## Features
-- Login with hashed password verification via Python.
-- Password input is hidden by default (`type="password"`) and can be toggled.
-- User discovery (`search`) and invite flow (accept/decline).
-- No groups; only 1:1 channels after invite acceptance.
-- Responsive UI for desktop + mobile.
+## Behavior
+- No groups (1:1 chat only)
+- No friend suggestions (explicit search required, 2+ characters)
+- Invite/accept flow before chat
+- Dedicated chat page with message polling
+- `/health` endpoint for deployment health checks
 
-## Demo Accounts (plain credentials for testing)
+## Demo accounts
 | Username | Password |
 |---|---|
 | nova | Nebula#2026 |
@@ -29,17 +31,15 @@ CryptoChat is a full-stack (no database) direct messaging app with a polished fu
 | sol | Lumen#2026 |
 | rhea | Aurora#2026 |
 
-> Password hashes are generated in `data/seed_accounts.json` and raw passwords are never stored there.
-
 ## Run
 ```bash
 npm install
 npm run seed
 npm start
 ```
-Open `http://localhost:3000`.
 
-## Validation
-```bash
-npm run check
-```
+## Render settings
+- Type: **Web Service**
+- Root Directory: **(leave empty)**
+- Build Command: `npm install && npm run seed`
+- Start Command: `npm start`

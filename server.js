@@ -40,23 +40,41 @@ function ensureConnection(a, b) {
   return key;
 }
 
-app.use(express.json());
+function getRoomKey(a, b) {
+  return [a, b].sort().join('::');
+}
+
+function validateUsernames(from, to) {
+  return Boolean(from && to && from !== to && usersByName.has(from) && usersByName.has(to));
+}
+
+app.use(express.json({ limit: '200kb' }));
 app.use(express.static(path.join(__dirname, 'public')));
+
+app.get('/health', (_req, res) => {
+  res.json({ ok: true, uptime: process.uptime() });
+});
 
 app.get('/api/users', (req, res) => {
   const query = (req.query.query || '').toString().toLowerCase().trim();
   const me = (req.query.me || '').toString().trim();
 
+  // No suggestions: return empty until user explicitly searches.
+  if (query.length < 2) {
+    return res.json({ users: [] });
+  }
+
   const list = [...usersByName.keys()]
     .filter((name) => name !== me)
-    .filter((name) => !query || name.includes(query))
+    .filter((name) => name.includes(query))
     .map(safeUserView);
 
-  res.json({ users: list });
+  return res.json({ users: list });
 });
 
 app.post('/api/login', (req, res) => {
-  const { username, password } = req.body || {};
+  const username = (req.body?.username || '').toString().trim();
+  const password = (req.body?.password || '').toString();
 
   if (!username || !password) {
     return res.status(400).json({ error: 'Username and password are required.' });
@@ -85,9 +103,10 @@ app.get('/api/invites/:username', (req, res) => {
 });
 
 app.post('/api/invite', (req, res) => {
-  const { from, to } = req.body || {};
+  const from = (req.body?.from || '').toString().trim();
+  const to = (req.body?.to || '').toString().trim();
 
-  if (!from || !to || from === to || !usersByName.has(from) || !usersByName.has(to)) {
+  if (!validateUsernames(from, to)) {
     return res.status(400).json({ error: 'Invalid invite payload.' });
   }
 
@@ -108,12 +127,14 @@ app.post('/api/invite', (req, res) => {
     status: 'pending',
     createdAt: new Date().toISOString()
   };
+
   invites.push(invite);
-  res.status(201).json({ invite });
+  return res.status(201).json({ invite });
 });
 
 app.post('/api/invite/respond', (req, res) => {
-  const { inviteId, accept } = req.body || {};
+  const inviteId = (req.body?.inviteId || '').toString();
+  const accept = Boolean(req.body?.accept);
   const invite = invites.find((item) => item.id === inviteId);
 
   if (!invite || invite.status !== 'pending') {
@@ -142,19 +163,42 @@ app.get('/api/chats/:username', (req, res) => {
         roomKey: key,
         peer,
         createdAt: room.createdAt,
-        preview: roomMessages.at(-1)?.text || 'No messages yet. Start the future.',
-        messages: roomMessages
+        preview: roomMessages.at(-1)?.text || 'No messages yet.',
+        messageCount: roomMessages.length
       };
     });
 
   res.json({ chats: chatRooms });
 });
 
-app.post('/api/messages', (req, res) => {
-  const { from, to, text } = req.body || {};
+app.get('/api/messages', (req, res) => {
+  const me = (req.query.me || '').toString().trim();
+  const peer = (req.query.peer || '').toString().trim();
 
-  if (!from || !to || !text?.trim()) {
+  if (!validateUsernames(me, peer)) {
+    return res.status(400).json({ error: 'Invalid users.' });
+  }
+
+  const roomKey = getRoomKey(me, peer);
+  if (!connections.has(roomKey)) {
+    return res.status(403).json({ error: 'No active chat connection with this user.' });
+  }
+
+  const roomMessages = messages.filter((msg) => msg.roomKey === roomKey);
+  return res.json({ roomKey, messages: roomMessages });
+});
+
+app.post('/api/messages', (req, res) => {
+  const from = (req.body?.from || '').toString().trim();
+  const to = (req.body?.to || '').toString().trim();
+  const text = (req.body?.text || '').toString().trim();
+
+  if (!validateUsernames(from, to) || !text) {
     return res.status(400).json({ error: 'Invalid message payload.' });
+  }
+
+  if (text.length > 600) {
+    return res.status(400).json({ error: 'Message is too long.' });
   }
 
   const roomKey = ensureConnection(from, to);
@@ -163,23 +207,11 @@ app.post('/api/messages', (req, res) => {
     roomKey,
     from,
     to,
-    text: text.trim(),
+    text,
     createdAt: new Date().toISOString()
   };
   messages.push(message);
   res.status(201).json({ message });
-});
-
-app.get('/api/demo-accounts', (_req, res) => {
-  const masked = seededAccounts.map((account) => ({
-    username: account.username,
-    password: '************'
-  }));
-
-  res.json({
-    notice: 'Passwords are masked by default. Use README-provided credentials for local demo login.',
-    accounts: masked
-  });
 });
 
 app.listen(PORT, () => {
