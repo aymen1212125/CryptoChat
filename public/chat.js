@@ -3,6 +3,7 @@ if (!me) location.href = '/login.html';
 
 const state = {
   activePeer: '',
+  activePanel: 'chats',
   chats: [],
   invites: [],
   users: [],
@@ -29,11 +30,22 @@ const el = {
   composerForm: document.getElementById('composerForm'),
   messageInput: document.getElementById('messageInput'),
   fileInput: document.getElementById('fileInput'),
-  dropzone: document.getElementById('dropzone'),
   infoPanel: document.getElementById('infoPanel'),
   connectionBanner: document.getElementById('connectionBanner'),
   contextMenu: document.getElementById('contextMenu'),
-  messageTemplate: document.getElementById('messageTemplate')
+  messageTemplate: document.getElementById('messageTemplate'),
+  mobileBackBtn: document.getElementById('mobileBackBtn'),
+  mobileNav: document.getElementById('mobileNav'),
+  tabButtons: document.querySelectorAll('.tab-btn'),
+  navButtons: document.querySelectorAll('.nav-btn'),
+  panelMap: {
+    chats: document.getElementById('chatsPanel'),
+    search: document.getElementById('searchPanel'),
+    invites: document.getElementById('invitesPanel')
+  },
+  plusBtn: document.getElementById('plusBtn'),
+  uploadMenu: document.getElementById('uploadMenu'),
+  uploadImageBtn: document.getElementById('uploadImageBtn')
 };
 
 el.meLabel.textContent = `@${me}`;
@@ -45,6 +57,21 @@ function setConnectionBanner(isOnline) {
 window.addEventListener('online', () => setConnectionBanner(true));
 window.addEventListener('offline', () => setConnectionBanner(false));
 setConnectionBanner(navigator.onLine);
+
+function switchPanel(name) {
+  state.activePanel = name;
+  Object.entries(el.panelMap).forEach(([key, panel]) => panel.classList.toggle('active', key === name));
+  el.tabButtons.forEach((button) => button.classList.toggle('active', button.dataset.panel === name));
+  el.navButtons.forEach((button) => button.classList.toggle('active', button.dataset.panel === name));
+}
+
+function openConversationView() {
+  if (window.innerWidth < 768) document.body.classList.add('conversation-open');
+}
+
+function closeConversationView() {
+  document.body.classList.remove('conversation-open');
+}
 
 async function api(url, options = {}) {
   const response = await fetch(url, { headers: { 'Content-Type': 'application/json' }, ...options });
@@ -90,6 +117,13 @@ function stateLabel(status) {
   return ({ sending: 'Sending…', sent: 'Sent', delivered: 'Delivered', read: 'Read', failed: 'Failed' })[status] || 'Sent';
 }
 
+function colorForUser(username) {
+  let hash = 0;
+  for (let i = 0; i < username.length; i += 1) hash = username.charCodeAt(i) + ((hash << 5) - hash);
+  const hue = Math.abs(hash) % 360;
+  return `hsl(${hue} 60% 42%)`;
+}
+
 function renderUsers() {
   el.searchList.innerHTML = '';
   if (!state.users.length) {
@@ -105,10 +139,10 @@ function renderUsers() {
     li.className = 'row between';
     li.innerHTML = `<span>@${user.username}</span>`;
     const btn = document.createElement('button');
-    btn.className = 'btn small';
+    btn.className = 'icon-btn accent';
     btn.dataset.invite = user.username;
     btn.type = 'button';
-    btn.textContent = 'Invite';
+    btn.textContent = '+';
     li.append(btn);
     el.searchList.append(li);
   });
@@ -130,14 +164,21 @@ function renderChats() {
     btn.className = `chat-row ${state.activePeer === chat.peer ? 'active' : ''}`;
     btn.type = 'button';
     btn.dataset.peer = chat.peer;
-    btn.innerHTML = `
-      <div class="avatar">${chat.peer[0].toUpperCase()}</div>
-      <div class="chat-row-body">
-        <div class="row between"><strong>@${chat.peer}</strong><small class="muted">${chat.unreadCount ? `${chat.unreadCount} unread` : `${chat.messageCount} msgs`}</small></div>
-        <p class="muted ellipsis"></p>
-      </div>
-    `;
-    btn.querySelector('p').textContent = chat.preview;
+
+    const avatar = document.createElement('div');
+    avatar.className = 'avatar';
+    avatar.style.backgroundColor = colorForUser(chat.peer);
+    avatar.textContent = chat.peer[0].toUpperCase();
+
+    const body = document.createElement('div');
+    body.className = 'chat-row-body';
+    body.innerHTML = `<div class="row between"><strong>@${chat.peer}</strong><small class="muted">${chat.unreadCount ? `${chat.unreadCount} unread` : `${chat.messageCount} msgs`}</small></div>`;
+    const preview = document.createElement('p');
+    preview.className = 'muted ellipsis';
+    preview.textContent = chat.preview;
+    body.append(preview);
+
+    btn.append(avatar, body);
     li.append(btn);
     el.chatList.append(li);
   });
@@ -159,13 +200,13 @@ function renderInvites() {
     const row = document.createElement('div');
     row.className = 'row';
     const accept = document.createElement('button');
-    accept.className = 'btn small';
+    accept.className = 'icon-btn accent';
     accept.dataset.accept = invite.id;
-    accept.textContent = 'Accept';
+    accept.textContent = '✓';
     const decline = document.createElement('button');
-    decline.className = 'btn ghost small';
+    decline.className = 'icon-btn';
     decline.dataset.decline = invite.id;
-    decline.textContent = 'Decline';
+    decline.textContent = '✕';
     row.append(accept, decline);
     li.append(row);
     el.invitesList.append(li);
@@ -222,8 +263,9 @@ function renderMessages() {
     bubble.classList.toggle('mine', message.from === me);
     bubble.dataset.kind = bubbleKind(list, i);
     bubble.dataset.status = message.status || 'sent';
-    bubble.querySelector('.bubble-meta').textContent = `${message.from === me ? 'You' : '@' + message.from} • ${new Date(message.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
-    bubble.querySelector('.bubble-state').textContent = stateLabel(message.status || 'sent');
+    bubble.querySelector('.bubble-meta').textContent = `${message.from === me ? 'You' : '@' + message.from}`;
+    const timeLabel = message.status === 'read' ? 'Read' : new Date(message.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    bubble.querySelector('.bubble-state').textContent = `${stateLabel(message.status || 'sent')} · ${timeLabel}`;
 
     const content = bubble.querySelector('.bubble-content');
     if (message.text) {
@@ -405,6 +447,7 @@ el.chatList.addEventListener('click', async (event) => {
   state.activePeer = button.dataset.peer;
   renderChats();
   await loadMessages();
+  openConversationView();
 });
 
 el.messageInput.addEventListener('input', () => {
@@ -412,23 +455,17 @@ el.messageInput.addEventListener('input', () => {
   sendTyping();
 });
 
-el.fileInput.addEventListener('change', () => {
-  state.selectedFile = el.fileInput.files?.[0] || null;
-  el.dropzone.textContent = state.selectedFile ? `Attached: ${state.selectedFile.name}` : 'Drop image';
+el.plusBtn.addEventListener('click', () => {
+  el.uploadMenu.classList.toggle('hidden');
 });
 
-el.dropzone.addEventListener('dragover', (event) => {
-  event.preventDefault();
-  el.dropzone.classList.add('active');
+el.uploadImageBtn.addEventListener('click', () => {
+  el.uploadMenu.classList.add('hidden');
+  el.fileInput.click();
 });
-el.dropzone.addEventListener('dragleave', () => el.dropzone.classList.remove('active'));
-el.dropzone.addEventListener('drop', (event) => {
-  event.preventDefault();
-  el.dropzone.classList.remove('active');
-  const file = event.dataTransfer.files?.[0];
-  if (!file) return;
-  state.selectedFile = file;
-  el.dropzone.textContent = `Attached: ${file.name}`;
+
+el.fileInput.addEventListener('change', () => {
+  state.selectedFile = el.fileInput.files?.[0] || null;
 });
 
 el.composerForm.addEventListener('submit', async (event) => {
@@ -444,7 +481,6 @@ el.composerForm.addEventListener('submit', async (event) => {
   autoGrow();
   state.selectedFile = null;
   el.fileInput.value = '';
-  el.dropzone.textContent = 'Drop image';
 
   try {
     const data = await api('/api/messages', {
@@ -477,7 +513,25 @@ el.contextMenu.addEventListener('click', (event) => {
 });
 
 document.addEventListener('click', (event) => {
-  if (!event.target.closest('.context-menu')) hideContextMenu();
+  if (!event.target.closest('.context-menu') && !event.target.closest('#plusBtn') && !event.target.closest('#uploadMenu')) {
+    hideContextMenu();
+    el.uploadMenu.classList.add('hidden');
+  }
+});
+
+el.mobileBackBtn.addEventListener('click', () => {
+  closeConversationView();
+});
+
+el.tabButtons.forEach((button) => {
+  button.addEventListener('click', () => switchPanel(button.dataset.panel));
+});
+
+el.navButtons.forEach((button) => {
+  button.addEventListener('click', () => {
+    switchPanel(button.dataset.panel);
+    closeConversationView();
+  });
 });
 
 el.logoutBtn.addEventListener('click', () => {
@@ -492,6 +546,7 @@ el.themeBtn.addEventListener('click', () => {
 });
 
 (async () => {
+  switchPanel('chats');
   await Promise.all([loadChats(), loadInvites()]);
   await loadUsers();
   if (state.activePeer) await loadMessages();
