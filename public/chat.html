@@ -1,32 +1,87 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>CryptoChat • Chat</title>
+  <title>CryptoChat • Messages</title>
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
-  <main class="chat-shell">
-    <header class="chat-topbar glass">
-      <div>
-        <h2 id="chatTitle"></h2>
-        <small id="subTitle" class="muted"></small>
-      </div>
-      <div class="row">
-        <button id="backBtn" class="secondary small">Chats</button>
-        <button id="logoutBtn" class="secondary small">Logout</button>
-      </div>
-    </header>
+  <div id="connectionBanner" class="connection-banner hidden" role="status" aria-live="polite">Reconnecting… Offline mode enabled.</div>
 
-    <section class="chat-card glass">
-      <div id="messages" class="messages"></div>
-      <form id="messageForm" class="composer">
-        <input id="messageInput" placeholder="Write a message..." maxlength="600" required />
-        <button type="submit">Send</button>
+  <main class="workspace">
+    <aside class="pane pane-left glass" aria-label="Contacts and chats">
+      <header class="pane-head">
+        <h2 id="meLabel">@me</h2>
+        <div class="row tight">
+          <button id="themeBtn" class="btn ghost" type="button" aria-label="Toggle theme">Theme</button>
+          <button id="logoutBtn" class="btn ghost" type="button">Logout</button>
+        </div>
+      </header>
+
+      <div class="search-wrap">
+        <input id="searchInput" class="input" placeholder="Search users (2+ chars)" autocomplete="off" />
+        <ul id="searchList" class="list"></ul>
+      </div>
+
+      <section class="list-section">
+        <div class="section-head">
+          <h3>Chats</h3>
+          <button id="refreshBtn" class="btn ghost" type="button">Refresh</button>
+        </div>
+        <ul id="chatList" class="list"></ul>
+      </section>
+
+      <section class="list-section">
+        <h3>Invites</h3>
+        <ul id="invitesList" class="list"></ul>
+      </section>
+    </aside>
+
+    <section class="pane pane-center glass" aria-label="Conversation area">
+      <header class="pane-head chat-head">
+        <div>
+          <h3 id="chatTitle">Select a chat</h3>
+          <small id="typingLabel" class="muted"></small>
+        </div>
+      </header>
+
+      <div id="messagesViewport" class="messages-viewport">
+        <div id="messagesInner" class="messages-inner"></div>
+      </div>
+
+      <form id="composerForm" class="composer" aria-label="Message composer">
+        <label for="fileInput" id="dropzone" class="dropzone">Drop image</label>
+        <input id="fileInput" type="file" accept="image/*" hidden />
+
+        <textarea id="messageInput" class="input composer-input" placeholder="Write a message" rows="1"></textarea>
+
+        <button id="sendBtn" class="btn" type="submit">Send</button>
       </form>
     </section>
+
+    <aside class="pane pane-right glass" aria-label="Thread details">
+      <h3>Conversation info</h3>
+      <div id="infoPanel" class="info-panel">
+        <p class="muted">Pick a chat to view details and actions.</p>
+      </div>
+    </aside>
   </main>
+
+  <div id="contextMenu" class="context-menu hidden" role="menu">
+    <button type="button" data-action="reply">Reply</button>
+    <button type="button" data-action="forward">Forward</button>
+    <button type="button" data-action="edit">Edit</button>
+  </div>
+
+  <template id="messageTemplate">
+    <article class="bubble" data-kind="single">
+      <div class="bubble-meta"></div>
+      <div class="bubble-content"></div>
+      <div class="bubble-state"></div>
+      <div class="reactions" aria-hidden="true">😀 👍 ❤️</div>
+    </article>
+  </template>
 
   <script src="chat.js"></script>
 </body>

@@ -1,80 +1,507 @@
-const me = localStorage.getItem('cryptochat_user');
+const me = (localStorage.getItem('cryptochat_user') || '').trim().toLowerCase();
 if (!me) location.href = '/login.html';
 
-const params = new URLSearchParams(location.search);
-const peer = (params.get('peer') || '').trim();
-if (!peer) location.href = '/discover.html';
+const state = {
+  activePeer: '',
+  chats: [],
+  invites: [],
+  users: [],
+  messages: [],
+  cachedThreads: JSON.parse(localStorage.getItem('cryptochat_threads') || '{}'),
+  typingCooldown: null,
+  selectedFile: null,
+  virtual: { rowHeight: 88, overscan: 8 }
+};
 
-document.getElementById('chatTitle').textContent = `@${peer}`;
-document.getElementById('subTitle').textContent = `Secure direct chat as @${me}`;
+const el = {
+  meLabel: document.getElementById('meLabel'),
+  searchInput: document.getElementById('searchInput'),
+  searchList: document.getElementById('searchList'),
+  chatList: document.getElementById('chatList'),
+  invitesList: document.getElementById('invitesList'),
+  refreshBtn: document.getElementById('refreshBtn'),
+  logoutBtn: document.getElementById('logoutBtn'),
+  themeBtn: document.getElementById('themeBtn'),
+  chatTitle: document.getElementById('chatTitle'),
+  typingLabel: document.getElementById('typingLabel'),
+  messagesViewport: document.getElementById('messagesViewport'),
+  messagesInner: document.getElementById('messagesInner'),
+  composerForm: document.getElementById('composerForm'),
+  messageInput: document.getElementById('messageInput'),
+  fileInput: document.getElementById('fileInput'),
+  dropzone: document.getElementById('dropzone'),
+  infoPanel: document.getElementById('infoPanel'),
+  connectionBanner: document.getElementById('connectionBanner'),
+  contextMenu: document.getElementById('contextMenu'),
+  messageTemplate: document.getElementById('messageTemplate')
+};
+
+el.meLabel.textContent = `@${me}`;
+document.documentElement.dataset.theme = localStorage.getItem('cryptochat_theme') || 'dark';
+
+function setConnectionBanner(isOnline) {
+  el.connectionBanner.classList.toggle('hidden', isOnline);
+}
+window.addEventListener('online', () => setConnectionBanner(true));
+window.addEventListener('offline', () => setConnectionBanner(false));
+setConnectionBanner(navigator.onLine);
 
 async function api(url, options = {}) {
-  const res = await fetch(url, {
-    headers: { 'Content-Type': 'application/json' },
-    ...options
-  });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error || 'Request failed');
+  const response = await fetch(url, { headers: { 'Content-Type': 'application/json' }, ...options });
+  const data = await response.json();
+  if (!response.ok) throw new Error(data.error || 'Request failed');
   return data;
 }
 
-function renderMessages(rows) {
-  const wrap = document.getElementById('messages');
-  wrap.innerHTML = '';
+function cacheThread(peer, messages) {
+  state.cachedThreads[peer] = messages.slice(-1500);
+  localStorage.setItem('cryptochat_threads', JSON.stringify(state.cachedThreads));
+}
 
-  if (!rows.length) {
-    wrap.innerHTML = '<div class="placeholder">No messages yet. Start the conversation.</div>';
+function autoGrow() {
+  el.messageInput.style.height = 'auto';
+  el.messageInput.style.height = `${Math.min(el.messageInput.scrollHeight, 180)}px`;
+}
+
+function dayLabel(iso) {
+  const d = new Date(iso);
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const target = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  const diff = Math.floor((today - target) / 86400000);
+  if (diff === 0) return 'Today';
+  if (diff === 1) return 'Yesterday';
+  return d.toLocaleDateString([], { month: 'long', day: 'numeric' });
+}
+
+function bubbleKind(list, i) {
+  const c = list[i];
+  const p = list[i - 1];
+  const n = list[i + 1];
+  const samePrev = p && p.from === c.from && dayLabel(p.createdAt) === dayLabel(c.createdAt);
+  const sameNext = n && n.from === c.from && dayLabel(n.createdAt) === dayLabel(c.createdAt);
+  if (samePrev && sameNext) return 'middle';
+  if (!samePrev && sameNext) return 'top';
+  if (samePrev && !sameNext) return 'bottom';
+  return 'single';
+}
+
+function stateLabel(status) {
+  return ({ sending: 'Sending…', sent: 'Sent', delivered: 'Delivered', read: 'Read', failed: 'Failed' })[status] || 'Sent';
+}
+
+function renderUsers() {
+  el.searchList.innerHTML = '';
+  if (!state.users.length) {
+    const li = document.createElement('li');
+    li.className = 'muted';
+    li.textContent = el.searchInput.value.trim().length < 2 ? 'Type at least 2 characters.' : 'No users found.';
+    el.searchList.append(li);
     return;
   }
 
-  rows.forEach((message) => {
-    const bubble = document.createElement('article');
-    bubble.className = `msg ${message.from === me ? 'me' : ''}`;
-
-    const meta = document.createElement('span');
-    meta.className = 'meta';
-    const when = new Date(message.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    meta.textContent = `${message.from} • ${when}`;
-
-    const body = document.createElement('p');
-    body.className = 'body';
-    body.textContent = message.text;
-
-    bubble.append(meta, body);
-    wrap.appendChild(bubble);
+  state.users.forEach((user) => {
+    const li = document.createElement('li');
+    li.className = 'row between';
+    li.innerHTML = `<span>@${user.username}</span>`;
+    const btn = document.createElement('button');
+    btn.className = 'btn small';
+    btn.dataset.invite = user.username;
+    btn.type = 'button';
+    btn.textContent = 'Invite';
+    li.append(btn);
+    el.searchList.append(li);
   });
+}
 
-  wrap.scrollTop = wrap.scrollHeight;
+function renderChats() {
+  el.chatList.innerHTML = '';
+  if (!state.chats.length) {
+    const li = document.createElement('li');
+    li.className = 'muted';
+    li.textContent = 'No active chats.';
+    el.chatList.append(li);
+    return;
+  }
+
+  state.chats.forEach((chat) => {
+    const li = document.createElement('li');
+    const btn = document.createElement('button');
+    btn.className = `chat-row ${state.activePeer === chat.peer ? 'active' : ''}`;
+    btn.type = 'button';
+    btn.dataset.peer = chat.peer;
+    btn.innerHTML = `
+      <div class="avatar">${chat.peer[0].toUpperCase()}</div>
+      <div class="chat-row-body">
+        <div class="row between"><strong>@${chat.peer}</strong><small class="muted">${chat.unreadCount ? `${chat.unreadCount} unread` : `${chat.messageCount} msgs`}</small></div>
+        <p class="muted ellipsis"></p>
+      </div>
+    `;
+    btn.querySelector('p').textContent = chat.preview;
+    li.append(btn);
+    el.chatList.append(li);
+  });
+}
+
+function renderInvites() {
+  el.invitesList.innerHTML = '';
+  if (!state.invites.length) {
+    const li = document.createElement('li');
+    li.className = 'muted';
+    li.textContent = 'No pending invites.';
+    el.invitesList.append(li);
+    return;
+  }
+
+  state.invites.forEach((invite) => {
+    const li = document.createElement('li');
+    li.innerHTML = `<strong>@${invite.from}</strong><p class="muted">wants to chat with you.</p>`;
+    const row = document.createElement('div');
+    row.className = 'row';
+    const accept = document.createElement('button');
+    accept.className = 'btn small';
+    accept.dataset.accept = invite.id;
+    accept.textContent = 'Accept';
+    const decline = document.createElement('button');
+    decline.className = 'btn ghost small';
+    decline.dataset.decline = invite.id;
+    decline.textContent = 'Decline';
+    row.append(accept, decline);
+    li.append(row);
+    el.invitesList.append(li);
+  });
+}
+
+function showContextMenu(x, y, messageId) {
+  el.contextMenu.classList.remove('hidden');
+  el.contextMenu.style.left = `${x}px`;
+  el.contextMenu.style.top = `${y}px`;
+  el.contextMenu.dataset.messageId = messageId;
+}
+
+function hideContextMenu() {
+  el.contextMenu.classList.add('hidden');
+}
+
+function renderMessages() {
+  const list = state.messages;
+  if (!state.activePeer) {
+    el.messagesInner.innerHTML = '<p class="muted">Select a chat to start messaging.</p>';
+    return;
+  }
+
+  if (!list.length) {
+    el.messagesInner.innerHTML = '<p class="muted">No messages yet.</p>';
+    return;
+  }
+
+  const viewportHeight = el.messagesViewport.clientHeight || 320;
+  const scrollTop = el.messagesViewport.scrollTop;
+  const visibleCount = Math.ceil(viewportHeight / state.virtual.rowHeight) + state.virtual.overscan;
+  const start = Math.max(0, Math.floor(scrollTop / state.virtual.rowHeight) - state.virtual.overscan);
+  const end = Math.min(list.length, start + visibleCount);
+
+  el.messagesInner.innerHTML = '';
+  const before = document.createElement('div');
+  before.style.height = `${start * state.virtual.rowHeight}px`;
+  el.messagesInner.append(before);
+
+  let lastDay = '';
+  for (let i = start; i < end; i += 1) {
+    const message = list[i];
+    const day = dayLabel(message.createdAt);
+    if (day !== lastDay) {
+      const sep = document.createElement('div');
+      sep.className = 'date-separator';
+      sep.textContent = day;
+      el.messagesInner.append(sep);
+      lastDay = day;
+    }
+
+    const bubble = el.messageTemplate.content.firstElementChild.cloneNode(true);
+    bubble.classList.toggle('mine', message.from === me);
+    bubble.dataset.kind = bubbleKind(list, i);
+    bubble.dataset.status = message.status || 'sent';
+    bubble.querySelector('.bubble-meta').textContent = `${message.from === me ? 'You' : '@' + message.from} • ${new Date(message.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+    bubble.querySelector('.bubble-state').textContent = stateLabel(message.status || 'sent');
+
+    const content = bubble.querySelector('.bubble-content');
+    if (message.text) {
+      const p = document.createElement('p');
+      p.textContent = message.text;
+      content.append(p);
+    }
+
+    if (message.attachment?.preview || message.attachment?.dataUrl) {
+      const wrap = document.createElement('div');
+      wrap.className = 'image-wrap';
+      wrap.innerHTML = '<div class="image-placeholder"></div>';
+      const img = document.createElement('img');
+      img.className = 'image-preview';
+      img.src = message.attachment.preview || message.attachment.dataUrl;
+      img.alt = 'attachment preview';
+      img.addEventListener('load', () => wrap.classList.add('loaded'));
+      wrap.append(img);
+      content.append(wrap);
+    }
+
+    bubble.oncontextmenu = (e) => {
+      e.preventDefault();
+      showContextMenu(e.clientX, e.clientY, message.id || message.clientTempId);
+    };
+
+    let touchTimer;
+    bubble.addEventListener('touchstart', (e) => {
+      const t = e.touches[0];
+      touchTimer = setTimeout(() => showContextMenu(t.clientX, t.clientY, message.id || message.clientTempId), 550);
+    }, { passive: true });
+    bubble.addEventListener('touchend', () => clearTimeout(touchTimer));
+
+    el.messagesInner.append(bubble);
+  }
+
+  const after = document.createElement('div');
+  after.style.height = `${(list.length - end) * state.virtual.rowHeight}px`;
+  el.messagesInner.append(after);
+}
+
+function scrollToBottom() {
+  requestAnimationFrame(() => {
+    el.messagesViewport.scrollTop = el.messagesViewport.scrollHeight;
+  });
+}
+
+function renderInfo() {
+  if (!state.activePeer) {
+    el.infoPanel.innerHTML = '<p class="muted">Pick a chat to view details and actions.</p>';
+    return;
+  }
+
+  const mediaCount = state.messages.filter((m) => m.attachment).length;
+  el.infoPanel.innerHTML = `
+    <p><strong>@${state.activePeer}</strong></p>
+    <p class="muted">Messages: ${state.messages.length}</p>
+    <p class="muted">Media: ${mediaCount}</p>
+    <p class="muted">Typing indicator auto-hides after 3s.</p>
+  `;
+}
+
+async function loadUsers() {
+  const query = el.searchInput.value.trim();
+  if (query.length < 2) {
+    state.users = [];
+    renderUsers();
+    return;
+  }
+
+  const data = await api(`/api/users?me=${encodeURIComponent(me)}&query=${encodeURIComponent(query)}`);
+  state.users = data.users;
+  renderUsers();
+}
+
+async function loadInvites() {
+  const data = await api(`/api/invites/${encodeURIComponent(me)}`);
+  state.invites = data.invites;
+  renderInvites();
+}
+
+async function loadChats() {
+  const data = await api(`/api/chats/${encodeURIComponent(me)}`);
+  state.chats = data.chats;
+  renderChats();
+
+  if (!state.activePeer && state.chats.length) {
+    state.activePeer = state.chats[0].peer;
+    await loadMessages();
+  }
 }
 
 async function loadMessages() {
-  const payload = await api(`/api/messages?me=${encodeURIComponent(me)}&peer=${encodeURIComponent(peer)}`);
-  renderMessages(payload.messages);
+  if (!state.activePeer) return;
+  try {
+    const data = await api(`/api/messages?me=${encodeURIComponent(me)}&peer=${encodeURIComponent(state.activePeer)}`);
+    state.messages = data.messages;
+    cacheThread(state.activePeer, state.messages);
+  } catch {
+    state.messages = state.cachedThreads[state.activePeer] || [];
+  }
+
+  el.chatTitle.textContent = `@${state.activePeer}`;
+  renderMessages();
+  renderInfo();
+  scrollToBottom();
+  await api('/api/messages/read', { method: 'POST', body: JSON.stringify({ me, peer: state.activePeer }) }).catch(() => {});
 }
 
-document.getElementById('messageForm').addEventListener('submit', async (event) => {
-  event.preventDefault();
-  const input = document.getElementById('messageInput');
-  const text = input.value.trim();
-  if (!text) return;
+async function refreshTyping() {
+  if (!state.activePeer) return;
+  const data = await api(`/api/typing?from=${encodeURIComponent(state.activePeer)}&to=${encodeURIComponent(me)}`).catch(() => ({ typing: false }));
+  el.typingLabel.textContent = data.typing ? `${state.activePeer} is typing…` : '';
+}
 
-  await api('/api/messages', {
-    method: 'POST',
-    body: JSON.stringify({ from: me, to: peer, text })
+async function sendTyping() {
+  if (!state.activePeer) return;
+  if (state.typingCooldown) clearTimeout(state.typingCooldown);
+  await api('/api/typing', { method: 'POST', body: JSON.stringify({ from: me, to: state.activePeer }) }).catch(() => {});
+  state.typingCooldown = setTimeout(() => { state.typingCooldown = null; }, 3000);
+}
+
+function optimisticMessage(text, attachment) {
+  const clientTempId = `tmp-${crypto.randomUUID?.() || Math.random().toString(16).slice(2)}`;
+  const message = {
+    id: clientTempId,
+    clientTempId,
+    from: me,
+    to: state.activePeer,
+    text,
+    attachment,
+    status: 'sending',
+    createdAt: new Date().toISOString()
+  };
+
+  state.messages.push(message);
+  cacheThread(state.activePeer, state.messages);
+  renderMessages();
+  scrollToBottom();
+  return message;
+}
+
+function attachmentPayload(file) {
+  return new Promise((resolve) => {
+    if (!file) return resolve(null);
+    const reader = new FileReader();
+    reader.onload = () => resolve({ filename: file.name, mime: file.type, dataUrl: reader.result, preview: reader.result });
+    reader.readAsDataURL(file);
   });
+}
 
-  input.value = '';
+el.searchInput.addEventListener('input', () => loadUsers().catch(() => {}));
+el.refreshBtn.addEventListener('click', () => Promise.all([loadInvites(), loadChats(), loadUsers()]));
+el.messagesViewport.addEventListener('scroll', renderMessages);
+
+el.searchList.addEventListener('click', async (event) => {
+  const button = event.target.closest('button[data-invite]');
+  if (!button) return;
+  await api('/api/invite', { method: 'POST', body: JSON.stringify({ from: me, to: button.dataset.invite }) });
+  await loadInvites();
+});
+
+el.invitesList.addEventListener('click', async (event) => {
+  const accept = event.target.closest('button[data-accept]');
+  const decline = event.target.closest('button[data-decline]');
+  if (!accept && !decline) return;
+
+  await api('/api/invite/respond', {
+    method: 'POST',
+    body: JSON.stringify({ inviteId: accept?.dataset.accept || decline?.dataset.decline, accept: Boolean(accept) })
+  });
+  await loadInvites();
+  await loadChats();
+});
+
+el.chatList.addEventListener('click', async (event) => {
+  const button = event.target.closest('button[data-peer]');
+  if (!button) return;
+  state.activePeer = button.dataset.peer;
+  renderChats();
   await loadMessages();
 });
 
-document.getElementById('backBtn').addEventListener('click', () => {
-  location.href = '/discover.html';
+el.messageInput.addEventListener('input', () => {
+  autoGrow();
+  sendTyping();
 });
 
-document.getElementById('logoutBtn').addEventListener('click', () => {
+el.fileInput.addEventListener('change', () => {
+  state.selectedFile = el.fileInput.files?.[0] || null;
+  el.dropzone.textContent = state.selectedFile ? `Attached: ${state.selectedFile.name}` : 'Drop image';
+});
+
+el.dropzone.addEventListener('dragover', (event) => {
+  event.preventDefault();
+  el.dropzone.classList.add('active');
+});
+el.dropzone.addEventListener('dragleave', () => el.dropzone.classList.remove('active'));
+el.dropzone.addEventListener('drop', (event) => {
+  event.preventDefault();
+  el.dropzone.classList.remove('active');
+  const file = event.dataTransfer.files?.[0];
+  if (!file) return;
+  state.selectedFile = file;
+  el.dropzone.textContent = `Attached: ${file.name}`;
+});
+
+el.composerForm.addEventListener('submit', async (event) => {
+  event.preventDefault();
+  if (!state.activePeer) return;
+
+  const text = el.messageInput.value.trim();
+  const attachment = await attachmentPayload(state.selectedFile);
+  if (!text && !attachment) return;
+
+  const optimistic = optimisticMessage(text, attachment);
+  el.messageInput.value = '';
+  autoGrow();
+  state.selectedFile = null;
+  el.fileInput.value = '';
+  el.dropzone.textContent = 'Drop image';
+
+  try {
+    const data = await api('/api/messages', {
+      method: 'POST',
+      body: JSON.stringify({ from: me, to: state.activePeer, text, attachment, clientTempId: optimistic.clientTempId })
+    });
+    const idx = state.messages.findIndex((m) => m.clientTempId === optimistic.clientTempId);
+    if (idx !== -1) state.messages[idx] = data.message;
+    cacheThread(state.activePeer, state.messages);
+    renderMessages();
+    await loadChats();
+  } catch {
+    optimistic.status = 'failed';
+    renderMessages();
+  }
+});
+
+el.contextMenu.addEventListener('click', (event) => {
+  const action = event.target.closest('button[data-action]')?.dataset.action;
+  if (!action) return;
+  const row = state.messages.find((m) => m.id === el.contextMenu.dataset.messageId || m.clientTempId === el.contextMenu.dataset.messageId);
+  hideContextMenu();
+  if (!row) return;
+
+  if (action === 'reply') el.messageInput.value = `↪ ${row.text || 'media'}\n`;
+  if (action === 'forward') el.messageInput.value = `FWD: ${row.text || '[media]'}\n`;
+  if (action === 'edit' && row.from === me) el.messageInput.value = row.text || '';
+  autoGrow();
+  el.messageInput.focus();
+});
+
+document.addEventListener('click', (event) => {
+  if (!event.target.closest('.context-menu')) hideContextMenu();
+});
+
+el.logoutBtn.addEventListener('click', () => {
   localStorage.removeItem('cryptochat_user');
   location.href = '/login.html';
 });
 
-loadMessages().catch((error) => alert(error.message));
-setInterval(() => loadMessages().catch(() => {}), 3500);
+el.themeBtn.addEventListener('click', () => {
+  const next = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
+  document.documentElement.dataset.theme = next;
+  localStorage.setItem('cryptochat_theme', next);
+});
+
+(async () => {
+  await Promise.all([loadChats(), loadInvites()]);
+  await loadUsers();
+  if (state.activePeer) await loadMessages();
+  renderInfo();
+})();
+
+setInterval(() => {
+  Promise.all([loadChats(), loadInvites()]).catch(() => {});
+  if (state.activePeer) {
+    loadMessages().catch(() => {});
+    refreshTyping().catch(() => {});
+  }
+}, 3000);
