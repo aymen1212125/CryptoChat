@@ -1,0 +1,16 @@
+{
+  "name": "cryptochat",
+  "version": "1.0.0",
+  "description": "Premium in-memory chat app with Python-backed password hashing",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js",
+    "seed": "python3 python/generate_seed.py",
+    "check": "node --check server.js && node --check public/chat.js && node --check public/login.js && python3 -m py_compile python/auth_logic.py python/generate_seed.py"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.49.4",
+    "express": "^4.19.2"
+  }
+}

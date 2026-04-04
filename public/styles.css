@@ -1,0 +1,158 @@
+:root {
+  --bg: #0e1621;
+  --sidebar: #17212b;
+  --panel: #182533;
+  --panel-soft: #111b26;
+  --line: #24384a;
+  --text: #e9f1f8;
+  --muted: #8ea9c0;
+  --accent: #5aa8ea;
+  --accent-2: #4e9ad8;
+}
+
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  min-height: 100vh;
+  font-family: Inter, system-ui, -apple-system, Segoe UI, sans-serif;
+  background: linear-gradient(180deg, #0e1621 0%, #0b141c 100%);
+  color: var(--text);
+}
+
+.glass {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+}
+
+.auth-shell { min-height: 100vh; display: grid; place-items: center; padding: 1rem; }
+.auth-card { width: min(430px, 95vw); padding: 1.2rem; }
+
+.app-shell {
+  width: min(1200px, 96vw);
+  margin: 1rem auto;
+  min-height: calc(100vh - 2rem);
+  display: grid;
+  grid-template-columns: 360px 1fr;
+  gap: 1rem;
+}
+
+.sidebar { padding: .9rem; background: var(--sidebar); }
+.sidebar-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: .8rem; }
+.search-block { margin-bottom: 1rem; }
+.list-block { margin-top: 1rem; }
+.block-title-row { display: flex; align-items: center; justify-content: space-between; }
+
+.content { padding: 1rem; }
+.content-head { margin-bottom: .8rem; }
+
+.chat-shell {
+  width: min(980px, 96vw);
+  margin: 1rem auto;
+  min-height: calc(100vh - 2rem);
+  display: grid;
+  gap: .8rem;
+  grid-template-rows: auto 1fr;
+}
+
+.chat-topbar { padding: .8rem 1rem; display: flex; justify-content: space-between; align-items: center; }
+.chat-card { display: grid; grid-template-rows: 1fr auto; padding: 1rem; background: var(--panel-soft); }
+
+.stack { display: grid; gap: .6rem; }
+.row { display: flex; gap: .5rem; align-items: center; }
+.row.between { justify-content: space-between; }
+
+h1,h2,h3,p { margin: 0; }
+h2 { font-size: 1.1rem; }
+h3 { font-size: 1rem; margin-bottom: .4rem; }
+.muted { color: var(--muted); font-size: .92rem; }
+.error { color: #ff99b2; min-height: 1rem; margin-top: .5rem; }
+
+input {
+  width: 100%;
+  background: #0f1a24;
+  color: var(--text);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: .7rem .85rem;
+}
+
+button {
+  border: none;
+  border-radius: 10px;
+  padding: .6rem .95rem;
+  background: var(--accent);
+  color: #06141f;
+  font-weight: 700;
+  cursor: pointer;
+}
+button:hover { background: var(--accent-2); }
+button.secondary { background: #25384a; color: var(--text); }
+button.small { padding: .45rem .7rem; font-size: .82rem; }
+
+ul { list-style: none; padding: 0; margin: .7rem 0 0; display: grid; gap: .55rem; }
+li { background: #13202d; border: 1px solid var(--line); border-radius: 10px; padding: .55rem; }
+
+.chat-tile {
+  width: 100%;
+  text-align: left;
+  display: grid;
+  grid-template-columns: 38px 1fr;
+  gap: .7rem;
+  background: transparent;
+  color: var(--text);
+  border: none;
+  padding: 0;
+}
+
+.avatar {
+  width: 38px;
+  height: 38px;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  background: #355c80;
+  font-weight: 700;
+}
+
+.tile-body { min-width: 0; }
+.tile-top { display: flex; justify-content: space-between; gap: .4rem; }
+.tile-body p { margin-top: .2rem; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.invite-card p { margin: .35rem 0 .6rem; }
+
+.messages {
+  overflow: auto;
+  display: grid;
+  align-content: start;
+  gap: .6rem;
+  padding-right: .2rem;
+}
+
+.msg {
+  width: fit-content;
+  max-width: min(78%, 680px);
+  background: #1a2a3a;
+  border: 1px solid #31485e;
+  border-radius: 12px;
+  padding: .5rem .7rem;
+}
+.msg.me {
+  margin-left: auto;
+  background: #2b5278;
+  border-color: #3b6a96;
+}
+.meta { font-size: .72rem; color: #b9cee0; display: block; margin-bottom: .2rem; }
+.body { margin: 0; white-space: pre-wrap; word-wrap: break-word; }
+.placeholder { color: var(--muted); text-align: center; margin-top: 1rem; }
+
+.composer {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: .6rem;
+  margin-top: .8rem;
+}
+
+@media (max-width: 900px) {
+  .app-shell { grid-template-columns: 1fr; }
+}
