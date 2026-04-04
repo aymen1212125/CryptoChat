@@ -1,0 +1,92 @@
+[
+  {
+    "username": "nova",
+    "password": {
+      "algo": "pbkdf2_sha256",
+      "iterations": 220000,
+      "salt": "7896f49823cf8a75a0e7447e975ba123",
+      "hash": "0957df5e46c7a94e1e9a7d9b331ac766ae26ae6b71623c9626f0915ece0119be"
+    }
+  },
+  {
+    "username": "orion",
+    "password": {
+      "algo": "pbkdf2_sha256",
+      "iterations": 220000,
+      "salt": "aef6b21274c0a288be5e8c421e933c8c",
+      "hash": "7baed9c191889a8a20980bcaf99cc82eb5a5d02ff8468ea2ed3f1bc11dbe32af"
+    }
+  },
+  {
+    "username": "lyra",
+    "password": {
+      "algo": "pbkdf2_sha256",
+      "iterations": 220000,
+      "salt": "abaf964e250ac35578aff73831b5713f",
+      "hash": "be84c894b249b1d3075aeffc7d744e7f105967414c93ecf792fd373a797b9c31"
+    }
+  },
+  {
+    "username": "atlas",
+    "password": {
+      "algo": "pbkdf2_sha256",
+      "iterations": 220000,
+      "salt": "37e69da3333717e4b341f622bd9d4a4e",
+      "hash": "caccce04e69ac1b2412fd95c9a79bfca13654e26776c3855b81d3a25bfe1277e"
+    }
+  },
+  {
+    "username": "vega",
+    "password": {
+      "algo": "pbkdf2_sha256",
+      "iterations": 220000,
+      "salt": "15557416cf218df12227c273fd7fcd96",
+      "hash": "f11a4109162dcd587aefdf3984941c6437a154de3ab63d6dd49b68e6f62e198b"
+    }
+  },
+  {
+    "username": "zenith",
+    "password": {
+      "algo": "pbkdf2_sha256",
+      "iterations": 220000,
+      "salt": "d10fdd51877c38444ae2be7cd3a4b325",
+      "hash": "e353b86c746c17e5c31b7928bc0affd420d3733958de768e0f99f3b2a9cb68fa"
+    }
+  },
+  {
+    "username": "astra",
+    "password": {
+      "algo": "pbkdf2_sha256",
+      "iterations": 220000,
+      "salt": "b2418516215173051871d051958e9017",
+      "hash": "703ea2c228c4caaa2060aefade2626b43eba3088f26de1da68e8af38da3a8b2b"
+    }
+  },
+  {
+    "username": "echo",
+    "password": {
+      "algo": "pbkdf2_sha256",
+      "iterations": 220000,
+      "salt": "85e8cd37b6fb62bf86ca1fab1e225ddc",
+      "hash": "9a6bd865e65ed808e75ab6b5461bdbafe357660d94212e8324d15c3df1a0c877"
+    }
+  },
+  {
+    "username": "sol",
+    "password": {
+      "algo": "pbkdf2_sha256",
+      "iterations": 220000,
+      "salt": "b81bdbd9827c2d6e851d01a28cc80f5a",
+      "hash": "ec91be16f572b1e188ba531f017150a3d2056d6daffe59279b96e2d325007815"
+    }
+  },
+  {
+    "username": "rhea",
+    "password": {
+      "algo": "pbkdf2_sha256",
+      "iterations": 220000,
+      "salt": "b28f9550d45d7e3d82505a8343d241cd",
+      "hash": "b882676cddf47969e9ff0723003072ac73b99fe9cb2ee4516f1353cf7f2945e2"
+    }
+  }
+]
