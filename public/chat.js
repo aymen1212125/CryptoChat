@@ -11,7 +11,10 @@ const state = {
   cachedThreads: JSON.parse(localStorage.getItem('cryptochat_threads') || '{}'),
   typingCooldown: null,
   selectedFile: null,
-  virtual: { rowHeight: 88, overscan: 8 }
+  virtual: { rowHeight: 88, overscan: 8 },
+  userScrolledUp: false,
+  firstOpenDone: false,
+  lastChatsSignature: ''
 };
 
 const el = {
@@ -57,6 +60,13 @@ function setConnectionBanner(isOnline) {
 window.addEventListener('online', () => setConnectionBanner(true));
 window.addEventListener('offline', () => setConnectionBanner(false));
 setConnectionBanner(navigator.onLine);
+
+
+function isNearBottom() {
+  const threshold = 60;
+  const distance = el.messagesViewport.scrollHeight - el.messagesViewport.scrollTop - el.messagesViewport.clientHeight;
+  return distance <= threshold;
+}
 
 function switchPanel(name) {
   state.activePanel = name;
@@ -149,6 +159,11 @@ function renderUsers() {
 }
 
 function renderChats() {
+  const signature = JSON.stringify(state.chats.map((c) => [c.peer, c.preview, c.unreadCount, c.messageCount, c.updatedAt]));
+  if (signature === state.lastChatsSignature) return;
+  state.lastChatsSignature = signature;
+
+  const preservedTop = el.chatList.scrollTop;
   el.chatList.innerHTML = '';
   if (!state.chats.length) {
     const li = document.createElement('li');
@@ -182,6 +197,7 @@ function renderChats() {
     li.append(btn);
     el.chatList.append(li);
   });
+  el.chatList.scrollTop = preservedTop;
 }
 
 function renderInvites() {
@@ -263,9 +279,11 @@ function renderMessages() {
     bubble.classList.toggle('mine', message.from === me);
     bubble.dataset.kind = bubbleKind(list, i);
     bubble.dataset.status = message.status || 'sent';
-    bubble.querySelector('.bubble-meta').textContent = `${message.from === me ? 'You' : '@' + message.from}`;
-    const timeLabel = message.status === 'read' ? 'Read' : new Date(message.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    bubble.querySelector('.bubble-state').textContent = `${stateLabel(message.status || 'sent')} · ${timeLabel}`;
+    const meta = bubble.querySelector('.bubble-meta');
+    meta.textContent = message.from === me ? '' : `@${message.from}`;
+    meta.classList.toggle('hidden', message.from === me);
+    bubble.querySelector('.bubble-state').textContent = message.from === me ? stateLabel(message.status || 'sent') : '';
+    bubble.querySelector('.bubble-time').textContent = new Date(message.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
     const content = bubble.querySelector('.bubble-content');
     if (message.text) {
@@ -358,8 +376,9 @@ async function loadChats() {
   }
 }
 
-async function loadMessages() {
+async function loadMessages({ forceScroll = false } = {}) {
   if (!state.activePeer) return;
+  const wasNearBottom = isNearBottom();
   try {
     const data = await api(`/api/messages?me=${encodeURIComponent(me)}&peer=${encodeURIComponent(state.activePeer)}`);
     state.messages = data.messages;
@@ -371,7 +390,9 @@ async function loadMessages() {
   el.chatTitle.textContent = `@${state.activePeer}`;
   renderMessages();
   renderInfo();
-  scrollToBottom();
+  const shouldAutoScroll = forceScroll || (!state.userScrolledUp && (wasNearBottom || !state.firstOpenDone));
+  if (shouldAutoScroll) scrollToBottom();
+  state.firstOpenDone = true;
   await api('/api/messages/read', { method: 'POST', body: JSON.stringify({ me, peer: state.activePeer }) }).catch(() => {});
 }
 
@@ -404,6 +425,7 @@ function optimisticMessage(text, attachment) {
   state.messages.push(message);
   cacheThread(state.activePeer, state.messages);
   renderMessages();
+  state.userScrolledUp = false;
   scrollToBottom();
   return message;
 }
@@ -419,7 +441,10 @@ function attachmentPayload(file) {
 
 el.searchInput.addEventListener('input', () => loadUsers().catch(() => {}));
 el.refreshBtn.addEventListener('click', () => Promise.all([loadInvites(), loadChats(), loadUsers()]));
-el.messagesViewport.addEventListener('scroll', renderMessages);
+el.messagesViewport.addEventListener('scroll', () => {
+  state.userScrolledUp = !isNearBottom();
+  renderMessages();
+});
 
 el.searchList.addEventListener('click', async (event) => {
   const button = event.target.closest('button[data-invite]');
@@ -446,7 +471,8 @@ el.chatList.addEventListener('click', async (event) => {
   if (!button) return;
   state.activePeer = button.dataset.peer;
   renderChats();
-  await loadMessages();
+  state.userScrolledUp = false;
+  await loadMessages({ forceScroll: true });
   openConversationView();
 });
 
@@ -556,7 +582,7 @@ el.themeBtn.addEventListener('click', () => {
 setInterval(() => {
   Promise.all([loadChats(), loadInvites()]).catch(() => {});
   if (state.activePeer) {
-    loadMessages().catch(() => {});
+    loadMessages({ forceScroll: false }).catch(() => {});
     refreshTyping().catch(() => {});
   }
 }, 3000);
