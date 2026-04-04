@@ -20,8 +20,10 @@ Then set environment variables:
 
 - `SUPABASE_URL`
 - `SUPABASE_SERVICE_ROLE_KEY`
+- `SUPABASE_DB_URL` (recommended; enables automatic schema migration on server boot)
 
-> The backend requires these variables. Without them, API returns configuration errors.
+> The backend requires `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY`.
+> If `SUPABASE_DB_URL` is set, the app auto-applies `supabase/schema.sql` on startup.
 
 ## 2) Run
 

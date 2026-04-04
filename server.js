@@ -4,12 +4,15 @@ const path = require('path');
 const { spawnSync } = require('child_process');
 const crypto = require('crypto');
 const { createClient } = require('@supabase/supabase-js');
+const { Client: PgClient } = require('pg');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseServiceRole = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+const supabaseDbUrl = process.env.SUPABASE_DB_URL || process.env.DATABASE_URL || '';
 const dbEnabled = Boolean(supabaseUrl && supabaseServiceRole);
 const supabase = dbEnabled
   ? createClient(supabaseUrl, supabaseServiceRole, { auth: { persistSession: false, autoRefreshToken: false } })
@@ -46,6 +49,25 @@ function verifyPasswordWithPython(password, entry) {
 
   if (proc.status !== 0) throw new Error(proc.stderr || 'Password verification failed.');
   return JSON.parse(proc.stdout).valid;
+}
+
+
+async function runSchemaIfPossible() {
+  if (!supabaseDbUrl) {
+    console.warn('No SUPABASE_DB_URL provided; skipping automatic schema migration.');
+    return;
+  }
+
+  const schemaSql = fs.readFileSync(path.join(__dirname, 'supabase', 'schema.sql'), 'utf-8');
+  const client = new PgClient({ connectionString: supabaseDbUrl, ssl: { rejectUnauthorized: false } });
+
+  await client.connect();
+  try {
+    await client.query(schemaSql);
+    console.log('Schema migration applied from supabase/schema.sql');
+  } finally {
+    await client.end();
+  }
 }
 
 function hashPasswordWithPython(password) {
@@ -446,6 +468,7 @@ app.get('/api/typing', async (req, res) => {
 (async () => {
   if (dbEnabled) {
     try {
+      await runSchemaIfPossible();
       await ensureSeedUsers();
       console.log('Supabase database connected and demo users ensured.');
     } catch (error) {
