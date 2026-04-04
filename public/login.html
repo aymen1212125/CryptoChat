@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CryptoChat • Sign in</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <main class="auth-shell">
+    <section class="auth-card glass">
+      <header class="auth-header">
+        <h1>CryptoChat</h1>
+        <p class="muted">Fast, resilient messaging with premium UX.</p>
+      </header>
+
+      <div class="tabs" role="tablist" aria-label="Authentication tabs">
+        <button id="tabLogin" class="btn ghost active" type="button" role="tab" aria-selected="true">Sign in</button>
+        <button id="tabSignup" class="btn ghost" type="button" role="tab" aria-selected="false">Sign up</button>
+      </div>
+
+      <form id="authForm" class="stack" novalidate>
+        <label class="sr-only" for="username">Username</label>
+        <input id="username" class="input" placeholder="username" minlength="3" maxlength="20" autocomplete="username" required />
+
+        <label class="sr-only" for="password">Password</label>
+        <input id="password" class="input" type="password" placeholder="Password" minlength="8" autocomplete="current-password" required />
+
+        <button id="submitAuth" class="btn" type="submit">Sign in</button>
+      </form>
+
+      <section class="demo-box" aria-label="Demo account hints">
+        <small class="muted">Demo examples: <strong>nova</strong> / Nebula#2026, <strong>orion</strong> / Quantum#2026</small>
+      </section>
+
+      <p id="authError" class="error" aria-live="polite"></p>
+    </section>
+  </main>
+  <script src="login.js"></script>
+</body>
+</html>
